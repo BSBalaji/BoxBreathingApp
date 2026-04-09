@@ -14,6 +14,7 @@ namespace BoxBreathingTray
         private readonly BreathingSettings _settings;
         private readonly AnimationEngine _engine;
         private SettingsForm? _settingsForm;
+        private ToolStripMenuItem? _pauseResumeItem;
 
         public TrayApplicationContext()
         {
@@ -22,9 +23,10 @@ namespace BoxBreathingTray
             _notifyIcon = new NotifyIcon
             {
                 Visible = true,
-                Text = "Box Breathing — 4-4-4-4",
+                Text = BuildTooltipText(false),
                 ContextMenuStrip = BuildContextMenu()
             };
+            _notifyIcon.MouseClick += OnNotifyIconMouseClick;
 
             _engine = new AnimationEngine(_settings, icon =>
             {
@@ -41,6 +43,9 @@ namespace BoxBreathingTray
             var openSettings = new ToolStripMenuItem("⚙  Settings…");
             openSettings.Click += OpenSettings;
 
+            _pauseResumeItem = new ToolStripMenuItem("⏸  Pause");
+            _pauseResumeItem.Click += (_, __) => TogglePause();
+
             var separator = new ToolStripSeparator();
 
             var exitItem = new ToolStripMenuItem("✕  Exit");
@@ -52,9 +57,34 @@ namespace BoxBreathingTray
             };
 
             menu.Items.Add(openSettings);
+            menu.Items.Add(_pauseResumeItem);
             menu.Items.Add(separator);
             menu.Items.Add(exitItem);
             return menu;
+        }
+
+        private string BuildTooltipText(bool paused)
+        {
+            string status = paused ? "Paused" : "Running";
+            return $"Box Breathing ({status}) — {_settings.SecondsPerSide:0.0}s/side";
+        }
+
+        private void TogglePause()
+        {
+            bool isPaused = _engine.TogglePause();
+            if (_pauseResumeItem != null)
+            {
+                _pauseResumeItem.Text = isPaused ? "▶  Resume" : "⏸  Pause";
+            }
+            _notifyIcon.Text = BuildTooltipText(isPaused);
+        }
+
+        private void OnNotifyIconMouseClick(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                TogglePause();
+            }
         }
 
         private void OpenSettings(object? sender, EventArgs e)
@@ -66,6 +96,7 @@ namespace BoxBreathingTray
                 {
                     _settings.Save();
                     _engine.ApplySettings(_settings);
+                    _notifyIcon.Text = BuildTooltipText(_engine.IsPaused);
                 };
                 _settingsForm.Show();
             }

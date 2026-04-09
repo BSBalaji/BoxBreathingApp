@@ -11,11 +11,14 @@ namespace BoxBreathingTray
     /// </summary>
     public class BreathingSettings
     {
-        // Seconds per side (box breathing default: 4)
-        public int SecondsPerSide { get; set; } = 4;
+        // Seconds per side for dot movement (box breathing default: 4.0)
+        public double SecondsPerSide { get; set; } = 4.0;
 
         // Colors stored as ARGB ints for JSON serialization
+        // Legacy setting kept for backward compatibility with older settings.json files.
         public int SquareColorArgb { get; set; } = Color.FromArgb(80, 120, 200).ToArgb();
+        public int HorizontalSidesColorArgb { get; set; } = Color.FromArgb(80, 120, 200).ToArgb(); // top + bottom
+        public int VerticalSidesColorArgb { get; set; } = Color.FromArgb(120, 90, 200).ToArgb();   // left + right
         public int DotColorArgb { get; set; } = Color.FromArgb(255, 255, 255).ToArgb();
         public int BackgroundColorArgb { get; set; } = Color.FromArgb(20, 20, 30).ToArgb();
 
@@ -24,6 +27,20 @@ namespace BoxBreathingTray
         {
             get => Color.FromArgb(SquareColorArgb);
             set => SquareColorArgb = value.ToArgb();
+        }
+
+        [JsonIgnore]
+        public Color HorizontalSidesColor
+        {
+            get => Color.FromArgb(HorizontalSidesColorArgb);
+            set => HorizontalSidesColorArgb = value.ToArgb();
+        }
+
+        [JsonIgnore]
+        public Color VerticalSidesColor
+        {
+            get => Color.FromArgb(VerticalSidesColorArgb);
+            set => VerticalSidesColorArgb = value.ToArgb();
         }
 
         [JsonIgnore]
@@ -55,8 +72,10 @@ namespace BoxBreathingTray
                 if (File.Exists(SettingsPath))
                 {
                     var json = File.ReadAllText(SettingsPath);
-                    return JsonSerializer.Deserialize<BreathingSettings>(json)
-                           ?? new BreathingSettings();
+                    var loaded = JsonSerializer.Deserialize<BreathingSettings>(json)
+                                 ?? new BreathingSettings();
+                    loaded.NormalizeLegacyColors();
+                    return loaded;
                 }
             }
             catch { /* fall through to default */ }
@@ -73,6 +92,19 @@ namespace BoxBreathingTray
                 File.WriteAllText(SettingsPath, json);
             }
             catch { /* silent — settings are non-critical */ }
+        }
+
+        private void NormalizeLegacyColors()
+        {
+            if (HorizontalSidesColorArgb == 0)
+            {
+                HorizontalSidesColorArgb = SquareColorArgb;
+            }
+
+            if (VerticalSidesColorArgb == 0)
+            {
+                VerticalSidesColorArgb = SquareColorArgb;
+            }
         }
     }
 }

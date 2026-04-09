@@ -24,6 +24,7 @@ namespace BoxBreathingTray
 
         private Thread? _thread;
         private volatile bool _running;
+        private volatile bool _paused;
         private Icon? _lastIcon;
 
         // Track elapsed time so settings changes don't reset the animation
@@ -50,6 +51,14 @@ namespace BoxBreathingTray
             _thread?.Join(500);
         }
 
+        public bool IsPaused => _paused;
+
+        public bool TogglePause()
+        {
+            _paused = !_paused;
+            return _paused;
+        }
+
         public void ApplySettings(BreathingSettings settings)
         {
             // Swap atomically enough for our purposes
@@ -65,14 +74,18 @@ namespace BoxBreathingTray
                 var now = DateTime.UtcNow;
                 double delta = (now - _lastTick).TotalSeconds;
                 _lastTick = now;
-                _elapsedSeconds += delta;
+                if (!_paused)
+                {
+                    _elapsedSeconds += delta;
+                }
 
                 var settings = _settings; // local snapshot
-                double cycleDuration = settings.SecondsPerSide * 4.0;
+                double secondsPerSide = Math.Max(0.1, settings.SecondsPerSide);
+                double cycleDuration = secondsPerSide * 4.0;
                 double t = _elapsedSeconds % cycleDuration; // position in cycle [0, cycleDuration)
 
                 // Normalise t → [0, 4) where each unit = one side
-                double progress = (t / settings.SecondsPerSide) % 4.0;
+                double progress = (t / secondsPerSide) % 4.0;
 
                 // Build icon and push to tray
                 using var bmp = Render(progress, settings);
@@ -113,9 +126,14 @@ namespace BoxBreathingTray
             const int Size = IconSize - Margin * 2;
             var rect = new Rectangle(Margin, Margin, Size, Size);
 
-            // Draw square
-            using var squarePen = new Pen(s.SquareColor, 3.5f);
-            g.DrawRectangle(squarePen, rect);
+            // Draw opposite sides with two colors:
+            // horizontal pair (top+bottom) and vertical pair (left+right).
+            using var horizontalPen = new Pen(s.HorizontalSidesColor, 3.5f);
+            using var verticalPen = new Pen(s.VerticalSidesColor, 3.5f);
+            g.DrawLine(horizontalPen, rect.Left, rect.Top, rect.Right, rect.Top);       // top
+            g.DrawLine(horizontalPen, rect.Left, rect.Bottom, rect.Right, rect.Bottom);  // bottom
+            g.DrawLine(verticalPen, rect.Left, rect.Top, rect.Left, rect.Bottom);        // left
+            g.DrawLine(verticalPen, rect.Right, rect.Top, rect.Right, rect.Bottom);      // right
 
             // Compute dot position
             var dotPos = GetDotPosition(progress, rect);

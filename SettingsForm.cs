@@ -16,10 +16,12 @@ namespace BoxBreathingTray
 
         // Controls
         private NumericUpDown _nudSeconds = null!;
-        private Button _btnSquareColor = null!;
+        private Button _btnHorizontalColor = null!;
+        private Button _btnVerticalColor = null!;
         private Button _btnDotColor = null!;
         private Button _btnBgColor = null!;
-        private Panel _previewSquare = null!;
+        private Panel _previewHorizontal = null!;
+        private Panel _previewVertical = null!;
         private Panel _previewDot = null!;
         private Panel _previewBg = null!;
         private Button _btnApply = null!;
@@ -39,40 +41,43 @@ namespace BoxBreathingTray
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            Size = new Size(340, 310);
+            Size = new Size(360, 340);
             BackColor = Color.FromArgb(22, 22, 32);
             ForeColor = Color.FromArgb(200, 210, 230);
             Font = new Font("Segoe UI", 9.5f);
 
             // ── Timing ────────────────────────────────────────────────────
-            var lblTiming = Label("Seconds per side (box-breathing step):", 18, 18);
+            var lblTiming = Label("Dot movement time per side:", 18, 18);
 
             _nudSeconds = new NumericUpDown
             {
                 Location = new Point(18, 42),
-                Size = new Size(60, 26),
-                Minimum = 1,
+                Size = new Size(70, 26),
+                Minimum = 0.5m,
                 Maximum = 60,
+                DecimalPlaces = 1,
+                Increment = 0.1m,
                 BackColor = Color.FromArgb(36, 36, 52),
                 ForeColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 Font = Font
             };
 
-            var lblSec = Label("seconds  (4 = classic box breathing)", 84, 47);
+            var lblSec = Label("seconds  (4.0 = classic box breathing)", 94, 47);
 
             // ── Colors ────────────────────────────────────────────────────
             var lblColors = Label("Colors:", 18, 84);
 
-            (_btnSquareColor, _previewSquare) = ColorRow("Square outline", 104);
-            (_btnDotColor, _previewDot) = ColorRow("Moving dot", 140);
-            (_btnBgColor, _previewBg) = ColorRow("Background", 176);
+            (_btnHorizontalColor, _previewHorizontal) = ColorRow("Top + Bottom sides", 104);
+            (_btnVerticalColor, _previewVertical) = ColorRow("Left + Right sides", 140);
+            (_btnDotColor, _previewDot) = ColorRow("Moving dot", 176);
+            (_btnBgColor, _previewBg) = ColorRow("Background", 212);
 
             // ── Buttons ───────────────────────────────────────────────────
             _btnApply = new Button
             {
                 Text = "Apply",
-                Location = new Point(130, 230),
+                Location = new Point(146, 266),
                 Size = new Size(80, 30),
                 BackColor = Color.FromArgb(60, 100, 180),
                 ForeColor = Color.White,
@@ -86,7 +91,7 @@ namespace BoxBreathingTray
             _btnReset = new Button
             {
                 Text = "Reset",
-                Location = new Point(222, 230),
+                Location = new Point(238, 266),
                 Size = new Size(80, 30),
                 BackColor = Color.FromArgb(60, 60, 80),
                 ForeColor = Color.White,
@@ -156,16 +161,18 @@ namespace BoxBreathingTray
 
         private void LoadValues()
         {
-            _nudSeconds.Value = _settings.SecondsPerSide;
-            _previewSquare.BackColor = _settings.SquareColor;
+            _nudSeconds.Value = (decimal)_settings.SecondsPerSide;
+            _previewHorizontal.BackColor = _settings.HorizontalSidesColor;
+            _previewVertical.BackColor = _settings.VerticalSidesColor;
             _previewDot.BackColor = _settings.DotColor;
             _previewBg.BackColor = _settings.BackgroundColor;
         }
 
         private void Apply(object? sender, EventArgs e)
         {
-            _settings.SecondsPerSide = (int)_nudSeconds.Value;
-            _settings.SquareColor = _previewSquare.BackColor;
+            _settings.SecondsPerSide = (double)_nudSeconds.Value;
+            _settings.HorizontalSidesColor = _previewHorizontal.BackColor;
+            _settings.VerticalSidesColor = _previewVertical.BackColor;
             _settings.DotColor = _previewDot.BackColor;
             _settings.BackgroundColor = _previewBg.BackColor;
             SettingsChanged?.Invoke();
@@ -174,8 +181,9 @@ namespace BoxBreathingTray
         private void Reset(object? sender, EventArgs e)
         {
             var def = new BreathingSettings();
-            _nudSeconds.Value = def.SecondsPerSide;
-            _previewSquare.BackColor = def.SquareColor;
+            _nudSeconds.Value = (decimal)def.SecondsPerSide;
+            _previewHorizontal.BackColor = def.HorizontalSidesColor;
+            _previewVertical.BackColor = def.VerticalSidesColor;
             _previewDot.BackColor = def.DotColor;
             _previewBg.BackColor = def.BackgroundColor;
         }
@@ -186,7 +194,7 @@ namespace BoxBreathingTray
             // Subtle divider line
             e.Graphics.DrawLine(
                 new System.Drawing.Pen(Color.FromArgb(50, 50, 70), 1),
-                18, 218, Width - 18, 218);
+                18, 252, Width - 18, 252);
         }
     }
 }
