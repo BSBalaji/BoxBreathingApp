@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -25,7 +26,6 @@ namespace BoxBreathingTray
         private Thread? _thread;
         private volatile bool _running;
         private volatile bool _paused;
-        private Icon? _lastIcon;
 
         // Track elapsed time so settings changes don't reset the animation
         private double _elapsedSeconds;
@@ -71,36 +71,40 @@ namespace BoxBreathingTray
         {
             while (_running)
             {
-                var now = DateTime.UtcNow;
-                double delta = (now - _lastTick).TotalSeconds;
-                _lastTick = now;
-                if (!_paused)
+                try
                 {
-                    _elapsedSeconds += delta;
+                    var now = DateTime.UtcNow;
+                    double delta = (now - _lastTick).TotalSeconds;
+                    _lastTick = now;
+                    if (!_paused)
+                    {
+                        _elapsedSeconds += delta;
+                    }
+
+                    var settings = _settings; // local snapshot
+                    double secondsPerSide = Math.Max(0.1, settings.SecondsPerSide);
+                    double cycleDuration = secondsPerSide * 4.0;
+                    double t = _elapsedSeconds % cycleDuration; // position in cycle [0, cycleDuration)
+
+                    // Normalise t → [0, 4) where each unit = one side
+                    double progress = (t / secondsPerSide) % 4.0;
+
+                    // Build icon and push to tray
+                    using var bmp = Render(progress, settings);
+                    var icon = BitmapToIcon(bmp);
+
+                    _iconCallback(icon);
+
+                    // Sleep for remainder of frame budget
+                    int elapsed = (int)(DateTime.UtcNow - now).TotalMilliseconds;
+                    int sleep = Math.Max(1, FrameMs - elapsed);
+                    Thread.Sleep(sleep);
                 }
-
-                var settings = _settings; // local snapshot
-                double secondsPerSide = Math.Max(0.1, settings.SecondsPerSide);
-                double cycleDuration = secondsPerSide * 4.0;
-                double t = _elapsedSeconds % cycleDuration; // position in cycle [0, cycleDuration)
-
-                // Normalise t → [0, 4) where each unit = one side
-                double progress = (t / secondsPerSide) % 4.0;
-
-                // Build icon and push to tray
-                using var bmp = Render(progress, settings);
-                var icon = BitmapToIcon(bmp);
-
-                // Dispose previous icon after handing off the new one
-                var oldIcon = _lastIcon;
-                _lastIcon = icon;
-                _iconCallback(icon);
-                oldIcon?.Dispose();
-
-                // Sleep for remainder of frame budget
-                int elapsed = (int)(DateTime.UtcNow - now).TotalMilliseconds;
-                int sleep = Math.Max(1, FrameMs - elapsed);
-                Thread.Sleep(sleep);
+                catch
+                {
+                    // Keep the tray app alive even if one frame fails.
+                    Thread.Sleep(FrameMs);
+                }
             }
         }
 
@@ -181,20 +185,22 @@ namespace BoxBreathingTray
             var hIcon = bmp.GetHicon();
             try
             {
-                return Icon.FromHandle(hIcon);
+                // Clone so the returned Icon no longer depends on hIcon.
+                using var tmp = Icon.FromHandle(hIcon);
+                return (Icon)tmp.Clone();
             }
             finally
             {
-                // Do NOT destroy hIcon here — Icon.FromHandle owns it; it is cleaned
-                // up when the Icon is disposed. Calling DestroyIcon here would cause
-                // a double-free crash.
+                DestroyIcon(hIcon);
             }
         }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
 
         public void Dispose()
         {
             Stop();
-            _lastIcon?.Dispose();
         }
     }
 }

@@ -31,7 +31,9 @@ namespace BoxBreathingTray
 
             _engine = new AnimationEngine(_settings, icon =>
             {
+                var previousIcon = _notifyIcon.Icon;
                 _notifyIcon.Icon = icon;
+                previousIcon?.Dispose();
             });
 
             _eyeBreakReminderTimer = new Timer();
