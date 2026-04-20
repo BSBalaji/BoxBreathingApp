@@ -13,6 +13,8 @@ namespace BoxBreathingTray
     {
         // Seconds per side for dot movement (box breathing default: 4.0)
         public double SecondsPerSide { get; set; } = 4.0;
+        public bool EnableEyeBreakReminder { get; set; } = true;
+        public int EyeBreakReminderMinutes { get; set; } = 20;
 
         // Colors stored as ARGB ints for JSON serialization
         // Legacy setting kept for backward compatibility with older settings.json files.
@@ -72,9 +74,28 @@ namespace BoxBreathingTray
                 if (File.Exists(SettingsPath))
                 {
                     var json = File.ReadAllText(SettingsPath);
+                    bool hasReminderEnabledSetting = false;
+                    bool hasReminderIntervalSetting = false;
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(json);
+                        if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                        {
+                            hasReminderEnabledSetting = doc.RootElement.TryGetProperty(nameof(EnableEyeBreakReminder), out _);
+                            hasReminderIntervalSetting = doc.RootElement.TryGetProperty(nameof(EyeBreakReminderMinutes), out _);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore parse failures here; deserialization below handles fallback.
+                    }
+
                     var loaded = JsonSerializer.Deserialize<BreathingSettings>(json)
                                  ?? new BreathingSettings();
                     loaded.NormalizeLegacyColors();
+                    loaded.NormalizeReminderSettings(
+                        hasReminderEnabledSetting,
+                        hasReminderIntervalSetting);
                     return loaded;
                 }
             }
@@ -104,6 +125,23 @@ namespace BoxBreathingTray
             if (VerticalSidesColorArgb == 0)
             {
                 VerticalSidesColorArgb = SquareColorArgb;
+            }
+        }
+
+        private void NormalizeReminderSettings(
+            bool hasReminderEnabledSetting,
+            bool hasReminderIntervalSetting)
+        {
+            // Existing users may have older settings.json without reminder keys.
+            // Preserve intended defaults when those properties are absent.
+            if (!hasReminderEnabledSetting)
+            {
+                EnableEyeBreakReminder = true;
+            }
+
+            if (!hasReminderIntervalSetting || EyeBreakReminderMinutes < 1)
+            {
+                EyeBreakReminderMinutes = 20;
             }
         }
     }

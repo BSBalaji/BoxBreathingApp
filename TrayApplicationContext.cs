@@ -13,6 +13,7 @@ namespace BoxBreathingTray
         private readonly NotifyIcon _notifyIcon;
         private readonly BreathingSettings _settings;
         private readonly AnimationEngine _engine;
+        private readonly Timer _eyeBreakReminderTimer;
         private SettingsForm? _settingsForm;
         private ToolStripMenuItem? _pauseResumeItem;
 
@@ -32,6 +33,10 @@ namespace BoxBreathingTray
             {
                 _notifyIcon.Icon = icon;
             });
+
+            _eyeBreakReminderTimer = new Timer();
+            _eyeBreakReminderTimer.Tick += OnEyeBreakReminderTick;
+            ApplyReminderSettings();
 
             _engine.Start();
         }
@@ -96,6 +101,7 @@ namespace BoxBreathingTray
                 {
                     _settings.Save();
                     _engine.ApplySettings(_settings);
+                    ApplyReminderSettings();
                     _notifyIcon.Text = BuildTooltipText(_engine.IsPaused);
                 };
                 _settingsForm.Show();
@@ -106,11 +112,37 @@ namespace BoxBreathingTray
             }
         }
 
+        private void ApplyReminderSettings()
+        {
+            _eyeBreakReminderTimer.Stop();
+
+            if (!_settings.EnableEyeBreakReminder)
+            {
+                return;
+            }
+
+            int maxMinutes = int.MaxValue / (60 * 1000);
+            int intervalMinutes = Math.Clamp(_settings.EyeBreakReminderMinutes, 1, maxMinutes);
+            int intervalMs = intervalMinutes * 60 * 1000;
+            _eyeBreakReminderTimer.Interval = intervalMs;
+            _eyeBreakReminderTimer.Start();
+        }
+
+        private void OnEyeBreakReminderTick(object? sender, EventArgs e)
+        {
+            _notifyIcon.BalloonTipTitle = "Eye Break Reminder";
+            _notifyIcon.BalloonTipText = "Look at something far away and blink for a moment.";
+            _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
+            _notifyIcon.ShowBalloonTip(4000);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 _engine.Stop();
+                _eyeBreakReminderTimer.Stop();
+                _eyeBreakReminderTimer.Dispose();
                 _notifyIcon.Dispose();
                 _settingsForm?.Dispose();
             }

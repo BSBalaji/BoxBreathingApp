@@ -16,6 +16,8 @@ namespace BoxBreathingTray
 
         // Controls
         private NumericUpDown _nudSeconds = null!;
+        private CheckBox _chkEnableReminder = null!;
+        private NumericUpDown _nudReminderMinutes = null!;
         private Button _btnHorizontalColor = null!;
         private Button _btnVerticalColor = null!;
         private Button _btnDotColor = null!;
@@ -41,7 +43,7 @@ namespace BoxBreathingTray
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            Size = new Size(360, 340);
+            Size = new Size(360, 400);
             BackColor = Color.FromArgb(22, 22, 32);
             ForeColor = Color.FromArgb(200, 210, 230);
             Font = new Font("Segoe UI", 9.5f);
@@ -65,19 +67,46 @@ namespace BoxBreathingTray
 
             var lblSec = Label("seconds  (4.0 = classic box breathing)", 94, 47);
 
-            // ── Colors ────────────────────────────────────────────────────
-            var lblColors = Label("Colors:", 18, 84);
+            var lblReminder = Label("Eye-break reminder:", 18, 84);
+            _chkEnableReminder = new CheckBox
+            {
+                Text = "Enable tray notification reminder",
+                Location = new Point(18, 108),
+                Size = new Size(250, 24),
+                ForeColor = Color.FromArgb(180, 190, 210),
+                BackColor = Color.Transparent,
+                Font = Font
+            };
 
-            (_btnHorizontalColor, _previewHorizontal) = ColorRow("Top + Bottom sides", 104);
-            (_btnVerticalColor, _previewVertical) = ColorRow("Left + Right sides", 140);
-            (_btnDotColor, _previewDot) = ColorRow("Moving dot", 176);
-            (_btnBgColor, _previewBg) = ColorRow("Background", 212);
+            _nudReminderMinutes = new NumericUpDown
+            {
+                Location = new Point(18, 138),
+                Size = new Size(70, 26),
+                Minimum = 1,
+                Maximum = 240,
+                DecimalPlaces = 0,
+                Increment = 1,
+                BackColor = Color.FromArgb(36, 36, 52),
+                ForeColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = Font
+            };
+
+            var lblReminderUnit = Label("minutes between reminders", 94, 143);
+
+            // ── Colors ────────────────────────────────────────────────────
+            var lblColors = Label("Colors:", 18, 182);
+
+            (_btnHorizontalColor, _previewHorizontal) = ColorRow("Top + Bottom sides", 202);
+            (_btnVerticalColor, _previewVertical) = ColorRow("Left + Right sides", 238);
+            (_btnDotColor, _previewDot) = ColorRow("Moving dot", 274);
+            (_btnBgColor, _previewBg) = ColorRow("Background", 310);
 
             // ── Buttons ───────────────────────────────────────────────────
             _btnApply = new Button
             {
                 Text = "Apply",
-                Location = new Point(146, 266),
+                Location = new Point(146, 334),
                 Size = new Size(80, 30),
                 BackColor = Color.FromArgb(60, 100, 180),
                 ForeColor = Color.White,
@@ -91,7 +120,7 @@ namespace BoxBreathingTray
             _btnReset = new Button
             {
                 Text = "Reset",
-                Location = new Point(238, 266),
+                Location = new Point(238, 334),
                 Size = new Size(80, 30),
                 BackColor = Color.FromArgb(60, 60, 80),
                 ForeColor = Color.White,
@@ -105,6 +134,10 @@ namespace BoxBreathingTray
             Controls.Add(lblTiming);
             Controls.Add(_nudSeconds);
             Controls.Add(lblSec);
+            Controls.Add(lblReminder);
+            Controls.Add(_chkEnableReminder);
+            Controls.Add(_nudReminderMinutes);
+            Controls.Add(lblReminderUnit);
             Controls.Add(lblColors);
             Controls.Add(_btnApply);
             Controls.Add(_btnReset);
@@ -162,6 +195,8 @@ namespace BoxBreathingTray
         private void LoadValues()
         {
             _nudSeconds.Value = (decimal)_settings.SecondsPerSide;
+            _chkEnableReminder.Checked = _settings.EnableEyeBreakReminder;
+            _nudReminderMinutes.Value = _settings.EyeBreakReminderMinutes;
             _previewHorizontal.BackColor = _settings.HorizontalSidesColor;
             _previewVertical.BackColor = _settings.VerticalSidesColor;
             _previewDot.BackColor = _settings.DotColor;
@@ -171,6 +206,8 @@ namespace BoxBreathingTray
         private void Apply(object? sender, EventArgs e)
         {
             _settings.SecondsPerSide = (double)_nudSeconds.Value;
+            _settings.EnableEyeBreakReminder = _chkEnableReminder.Checked;
+            _settings.EyeBreakReminderMinutes = (int)_nudReminderMinutes.Value;
             _settings.HorizontalSidesColor = _previewHorizontal.BackColor;
             _settings.VerticalSidesColor = _previewVertical.BackColor;
             _settings.DotColor = _previewDot.BackColor;
@@ -182,6 +219,8 @@ namespace BoxBreathingTray
         {
             var def = new BreathingSettings();
             _nudSeconds.Value = (decimal)def.SecondsPerSide;
+            _chkEnableReminder.Checked = def.EnableEyeBreakReminder;
+            _nudReminderMinutes.Value = def.EyeBreakReminderMinutes;
             _previewHorizontal.BackColor = def.HorizontalSidesColor;
             _previewVertical.BackColor = def.VerticalSidesColor;
             _previewDot.BackColor = def.DotColor;
@@ -194,7 +233,7 @@ namespace BoxBreathingTray
             // Subtle divider line
             e.Graphics.DrawLine(
                 new System.Drawing.Pen(Color.FromArgb(50, 50, 70), 1),
-                18, 252, Width - 18, 252);
+                18, 322, Width - 18, 322);
         }
     }
 }
